@@ -9,12 +9,13 @@ switch:
     local_key: 1234567891234567
     device_id: 12345678912345671234
     name: tuya_01
+    protocol_version: 3.3
 """
 import voluptuous as vol
 from homeassistant.components.switch import SwitchDevice, PLATFORM_SCHEMA
 from homeassistant.const import (CONF_HOST, CONF_ID, CONF_SWITCHES, CONF_FRIENDLY_NAME, CONF_ICON, CONF_NAME)
 import homeassistant.helpers.config_validation as cv
-from time import time
+from time import time, sleep
 from threading import Lock
 
 REQUIREMENTS = ['pytuya==7.0.4']
@@ -93,6 +94,7 @@ class TuyaCache:
         try:
             now = time()
             if not self._cached_status or now - self._cached_status_time > 30:
+                sleep(0.5)
                 self._cached_status = self.__get_status(switchid)
                 self._cached_status_time = time()
             return self._cached_status
