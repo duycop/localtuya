@@ -20,6 +20,7 @@ switch:
     local_key: 1234567891234567
     device_id: 12345678912345671234
     name: tuya_01
+    protocol_version: 3.3
 ```
 
 ### Related Projects
