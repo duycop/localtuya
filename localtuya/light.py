@@ -139,7 +139,7 @@ class TuyaCache:
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
                 return self._device.brightness()
-            except ConnectionResetError:
+            except ConnectionError:
                 pass
             except socket.timeout:
                 pass
@@ -150,7 +150,7 @@ class TuyaCache:
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
                 return self._device.colourtemp()
-            except ConnectionResetError:
+            except ConnectionError:
                 pass
             except socket.timeout:
                 pass
@@ -161,7 +161,7 @@ class TuyaCache:
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
                 self._device.set_brightness(brightness)
-            except ConnectionResetError:
+            except ConnectionError:
                 pass
             except socket.timeout:
                 pass
@@ -172,7 +172,7 @@ class TuyaCache:
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
                 self._device.set_colourtemp(color_temp)
-            except ConnectionResetError:
+            except ConnectionError:
                 pass
             except socket.timeout:
                 pass
