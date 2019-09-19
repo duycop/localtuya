@@ -92,6 +92,8 @@ class TuyaCache:
                 return status
             except ConnectionError:
                 pass
+            except socket.timeout:
+                pass
         log.warn(
             "Failed to get status after {} tries".format(UPDATE_RETRY_LIMIT))
 
@@ -103,6 +105,8 @@ class TuyaCache:
             try:
                 return self._device.set_status(state, switchid)
             except ConnectionError:
+                pass
+            except socket.timeout:
                 pass
         log.warn(
             "Failed to set status after {} tries".format(UPDATE_RETRY_LIMIT))
@@ -136,6 +140,8 @@ class TuyaCache:
                 return self._device.brightness()
             except ConnectionResetError:
                 pass
+            except socket.timeout:
+                pass
         log.warn(
             "Failed to get brightness after {} tries".format(UPDATE_RETRY_LIMIT))
 
@@ -144,6 +150,8 @@ class TuyaCache:
             try:
                 return self._device.colourtemp()
             except ConnectionResetError:
+                pass
+            except socket.timeout:
                 pass
         log.warn(
             "Failed to get color temp after {} tries".format(UPDATE_RETRY_LIMIT))
@@ -154,6 +162,8 @@ class TuyaCache:
                 self._device.set_brightness(brightness)
             except ConnectionResetError:
                 pass
+            except socket.timeout:
+                pass
         log.warn(
             "Failed to set brightness after {} tries".format(UPDATE_RETRY_LIMIT))
 
@@ -162,6 +172,8 @@ class TuyaCache:
             try:
                 self._device.set_colourtemp(color_temp)
             except ConnectionResetError:
+                pass
+            except socket.timeout:
                 pass
         log.warn(
             "Failed to set color temp after {} tries".format(UPDATE_RETRY_LIMIT))
