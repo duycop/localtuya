@@ -112,7 +112,6 @@ class TuyaCache:
         log.warn(
             "Failed to set status after {} tries".format(UPDATE_RETRY_LIMIT))
 
-
     def status(self, switchid):
         """Get state of Tuya switch and cache the results."""
         self._lock.acquire()
@@ -160,7 +159,7 @@ class TuyaCache:
     def set_brightness(self, brightness):
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
-                self._device.set_brightness(brightness)
+                return self._device.set_brightness(brightness)
             except ConnectionError:
                 pass
             except socket.timeout:
@@ -171,7 +170,7 @@ class TuyaCache:
     def set_color_temp(self, color_temp):
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
-                self._device.set_colourtemp(color_temp)
+                return self._device.set_colourtemp(color_temp)
             except ConnectionError:
                 pass
             except socket.timeout:
@@ -220,12 +219,15 @@ class TuyaDevice(Light):
         """Get state of Tuya switch."""
         status = self._device.status(self._bulb_id)
         self._state = status
-        brightness = int(self._device.brightness())
-        if brightness > 254:
-           brightness = 255
-        if brightness < 25:
-           brightness = 25
-        self._brightness = brightness
+        try:
+           brightness = int(self._device.brightness())
+           if brightness > 254:
+              brightness = 255
+           if brightness < 25:
+              brightness = 25
+           self._brightness = brightness
+        except TypeError:
+            pass
         self._color_temp = self._device.color_temp()
 
     @property
