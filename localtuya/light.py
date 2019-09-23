@@ -243,7 +243,10 @@ class TuyaDevice(Light):
     @property
     def color_temp(self):
         """Return the color_temp of the light."""
-        return int(MAX_MIRED - (((MAX_MIRED - MIN_MIRED) / 255) * self._color_temp))
+        try:
+           return int(MAX_MIRED - (((MAX_MIRED - MIN_MIRED) / 255) * self._color_temp))
+        except TypeError:
+            pass
 
     @property
     def min_mireds(self):
