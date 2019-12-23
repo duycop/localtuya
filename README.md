@@ -34,4 +34,4 @@ switch:
 
 ### Acknowledgements
 
-  * Based on mytuya work (link missing)
+  * Based on localtuya from stast1 work (https://github.com/stast1/localtuya)
