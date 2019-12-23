@@ -21,6 +21,8 @@ switch:
     device_id: 12345678912345671234
     name: tuya_01
     protocol_version: 3.3
+    id: 1
+    interval: 5 # default interval will be 30s
 ```
 
 ### Related Projects
