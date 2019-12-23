@@ -26,6 +26,8 @@ CONF_PROTOCOL_VERSION = 'protocol_version'
 CONF_CURRENT = 'current'
 CONF_CURRENT_CONSUMPTION = 'current_consumption'
 CONF_VOLTAGE = 'voltage'
+CONF_INTERVAL = 'interval'
+
 
 DEFAULT_ID = '1'
 DEFAULT_PROTOCOL_VERSION = 3.3
@@ -45,6 +47,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_CURRENT, default='4'): cv.string,
     vol.Optional(CONF_CURRENT_CONSUMPTION, default='5'): cv.string,
     vol.Optional(CONF_VOLTAGE, default='6'): cv.string,
+    vol.Optional(CONF_INTERVAL, default='30'): cv.string,
 })
 
 
@@ -55,8 +58,8 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     switches = []
     pytuyadevice = pytuya.OutletDevice(config.get(CONF_DEVICE_ID), config.get(CONF_HOST), config.get(CONF_LOCAL_KEY))
     pytuyadevice.set_version(float(config.get(CONF_PROTOCOL_VERSION)))
+    outlet_device = TuyaCache(pytuyadevice, config.get(CONF_INTERVAL))
 
-    outlet_device = TuyaCache(pytuyadevice)
     switches.append(
             TuyaDevice(
                 outlet_device,
@@ -74,11 +77,12 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 class TuyaCache:
     """Cache wrapper for pytuya.OutletDevice"""
 
-    def __init__(self, device):
+    def __init__(self, device, interval):
         """Initialize the cache."""
         self._cached_status = ''
         self._cached_status_time = 0
         self._device = device
+        self._interval = int(interval)
         self._lock = Lock()
 
     def __get_status(self):
@@ -106,7 +110,7 @@ class TuyaCache:
         self._lock.acquire()
         try:
             now = time()
-            if not self._cached_status or now - self._cached_status_time > 30:
+            if not self._cached_status or now - self._cached_status_time > self._interval:
                 sleep(0.5)
                 self._cached_status = self.__get_status()
                 self._cached_status_time = time()
