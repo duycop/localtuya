@@ -17,6 +17,7 @@ from homeassistant.const import (CONF_HOST, CONF_ID, CONF_SWITCHES, CONF_FRIENDL
 import homeassistant.helpers.config_validation as cv
 from time import time, sleep
 from threading import Lock
+import socket
 
 REQUIREMENTS = ['pytuya==7.0.4']
 
@@ -35,6 +36,8 @@ DEFAULT_PROTOCOL_VERSION = 3.3
 ATTR_CURRENT = 'current'
 ATTR_CURRENT_CONSUMPTION = 'current_consumption'
 ATTR_VOLTAGE = 'voltage'
+
+UPDATE_RETRY_LIMIT = 10
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_ICON): cv.icon,
@@ -86,24 +89,30 @@ class TuyaCache:
         self._lock = Lock()
 
     def __get_status(self):
-        for i in range(20):
+        for _ in range(UPDATE_RETRY_LIMIT):
             try:
                 status = self._device.status()
                 return status
             except ConnectionError:
-                if i+1 == 3:
-                    raise ConnectionError("Failed to update status.")
+                pass
+            except socket.timeout:
+                pass
+        log.warn(
+            "Failed to get status after {} tries".format(UPDATE_RETRY_LIMIT))
 
     def set_status(self, state, switchid):
         """Change the Tuya switch status and clear the cache."""
         self._cached_status = ''
         self._cached_status_time = 0
-        for i in range(20):
+        for _ in range(UPDATE_RETRY_LIMIT):
             try:
                 return self._device.set_status(state, switchid)
             except ConnectionError:
-                if i+1 == 5:
-                    raise ConnectionError("Failed to set status.")
+                pass
+            except socket.timeout:
+                pass
+        log.warn(
+            "Failed to set status after {} tries".format(UPDATE_RETRY_LIMIT))
 
     def status(self):
         """Get state of Tuya switch and cache the results."""

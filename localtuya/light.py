@@ -41,7 +41,7 @@ DEFAULT_ID = '1'
 DEFAULT_PROTOCOL_VERSION = 3.3
 MIN_MIRED = 153
 MAX_MIRED = 370
-UPDATE_RETRY_LIMIT = 3
+UPDATE_RETRY_LIMIT = 10
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_ICON): cv.icon,
@@ -261,8 +261,7 @@ class TuyaDevice(Light):
     def turn_on(self, **kwargs):
         """Turn on or control the light."""
         log.debug("Turning on, state: " + str(self._device.cached_status()))
-        if  not self._device.cached_status():
-            self._device.set_status(True, self._bulb_id)
+        self._device.set_status(True, self._bulb_id)
         if ATTR_BRIGHTNESS in kwargs:
             converted_brightness = int(kwargs[ATTR_BRIGHTNESS])
             if converted_brightness <= 25:
