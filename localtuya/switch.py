@@ -84,6 +84,7 @@ class TuyaCache:
         """Initialize the cache."""
         self._cached_status = ''
         self._cached_status_time = 0
+        self._cached_available = False
         self._device = device
         self._interval = int(interval)
         self._lock = Lock()
@@ -91,12 +92,15 @@ class TuyaCache:
     def __get_status(self):
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
+                self._cached_available = True
                 status = self._device.status()
                 return status
             except ConnectionError:
                 pass
             except socket.timeout:
                 pass
+
+        self._cached_available = False
         log.warn(
             "Failed to get status after {} tries".format(UPDATE_RETRY_LIMIT))
 
@@ -106,11 +110,14 @@ class TuyaCache:
         self._cached_status_time = 0
         for _ in range(UPDATE_RETRY_LIMIT):
             try:
+                self._cached_available = True
                 return self._device.set_status(state, switchid)
             except ConnectionError:
                 pass
             except socket.timeout:
                 pass
+
+        self._cached_available = False
         log.warn(
             "Failed to set status after {} tries".format(UPDATE_RETRY_LIMIT))
 
@@ -123,9 +130,16 @@ class TuyaCache:
                 sleep(0.5)
                 self._cached_status = self.__get_status()
                 self._cached_status_time = time()
+                self._cached_available = True
             return self._cached_status
+        except:
+            self._cached_available = False
+            raise
         finally:
             self._lock.release()
+
+    def available(self):
+        return self._cached_available
 
 class TuyaDevice(SwitchDevice):
     """Representation of a Tuya switch."""
@@ -139,8 +153,20 @@ class TuyaDevice(SwitchDevice):
         self._attr_current = attr_current
         self._attr_consumption = attr_consumption
         self._attr_voltage = attr_voltage
-        self._status = self._device.status()
-        self._state = self._status['dps'][self._switch_id]
+
+        self._status = None
+        self._state = False
+        self._available = False
+
+        print('Initialized tuya switch [{}] '.format(name))
+
+        try:
+            self._status = self._device.status()
+            self._state = self._status['dps'][self._switch_id]
+            self._available = True
+        except:
+            pass
+
         print('Initialized tuya switch [{}] with switch status [{}] and state [{}]'.format(self._name, self._status, self._state))
 
     @property
@@ -163,7 +189,7 @@ class TuyaDevice(SwitchDevice):
             print('attrs[ATTR_CURRENT_CONSUMPTION]'.format(attrs[ATTR_CURRENT_CONSUMPTION]))
             attrs[ATTR_VOLTAGE] = "{}".format(self._status['dps'][self._attr_voltage]/10)
             print('attrs[ATTR_VOLTAGE]'.format(attrs[ATTR_VOLTAGE]))
-
+            self._available = True
         except KeyError:
             pass
         return attrs
@@ -172,6 +198,11 @@ class TuyaDevice(SwitchDevice):
     def icon(self):
         """Return the icon."""
         return self._icon
+
+    @property
+    def available(self):
+        """Return if available."""
+        return (self._device.available() and self._available)
 
     def turn_on(self, **kwargs):
         """Turn Tuya switch on."""
@@ -183,5 +214,10 @@ class TuyaDevice(SwitchDevice):
 
     def update(self):
         """Get state of Tuya switch."""
-        self._status = self._device.status()
-        self._state = self._status['dps'][self._switch_id]
+        try:
+            self._status = self._device.status()
+            self._state = self._status['dps'][self._switch_id]
+            self._available = True
+        except:
+            self._available = False
+            log.debug('update except')
