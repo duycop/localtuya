@@ -23,6 +23,15 @@ switch:
     protocol_version: 3.3
     id: 1
     interval: 5 # default interval will be 30s
+
+light:
+  - platform: localtuya
+    host: 192.168.0.1
+    local_key: 1234567891234567
+    device_id: 12345678912345671234
+    name: tuya_01
+    protocol_version: 3.3
+    id: 20
 ```
 
 ### Related Projects
