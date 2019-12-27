@@ -3,13 +3,16 @@ Simple platform to control LOCALLY Tuya switch devices.
 
 Sample config yaml
 
-switch:
+light:
   - platform: localtuya
     host: 192.168.0.1
     local_key: 1234567891234567
     device_id: 12345678912345671234
     name: tuya_01
     protocol_version: 3.3
+    id: 20
+    sp_brightness: 'True' # Default False
+    sp_color_temp: 'True' # Default False
 """
 import voluptuous as vol
 from homeassistant.const import (CONF_HOST, CONF_ID, CONF_SWITCHES, CONF_FRIENDLY_NAME, CONF_ICON, CONF_NAME)
@@ -36,6 +39,10 @@ REQUIREMENTS = ['pytuya==7.0.4']
 CONF_DEVICE_ID = 'device_id'
 CONF_LOCAL_KEY = 'local_key'
 CONF_PROTOCOL_VERSION = 'protocol_version'
+CONF_SP_BRIGHTNESS = 'sp_brightness'
+CONF_SP_COLOR_TEMP = 'sp_color_temp'
+
+
 # IMPORTANT, id is used as key for state and turning on and off, 1 was fine switched apparently but my bulbs need 20, other feature attributes count up from this, e.g. 21 mode, 22 brightnes etc, see my pytuya modification.
 DEFAULT_ID = '1'
 DEFAULT_PROTOCOL_VERSION = 3.3
@@ -51,6 +58,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_NAME): cv.string,
     vol.Required(CONF_PROTOCOL_VERSION, default=DEFAULT_PROTOCOL_VERSION): vol.Coerce(float),
     vol.Optional(CONF_ID, default=DEFAULT_ID): cv.string,
+    vol.Optional(CONF_SP_BRIGHTNESS, default='False'): cv.string,
+    vol.Optional(CONF_SP_COLOR_TEMP, default='False'): cv.string
 })
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.DEBUG)  # Debug hack!
@@ -70,7 +79,9 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 bulb_device,
                 config.get(CONF_NAME),
                 config.get(CONF_ICON), 
-                config.get(CONF_ID)
+                config.get(CONF_ID),
+                config.get(CONF_SP_BRIGHTNESS),
+                config.get(CONF_SP_COLOR_TEMP)
             )
     )
 
@@ -190,7 +201,7 @@ class TuyaCache:
 class TuyaDevice(Light):
     """Representation of a Tuya switch."""
 
-    def __init__(self, device, name, icon, bulbid):
+    def __init__(self, device, name, icon, bulbid, sp_brightness, sp_color_temp):
         """Initialize the Tuya switch."""
         self._device = device
         self._name = name
@@ -199,6 +210,8 @@ class TuyaDevice(Light):
         self._color_temp = 127
         self._icon = icon
         self._bulb_id = bulbid
+        self._sp_brightness = sp_brightness
+        self._sp_color_temp = sp_color_temp
 
     @property
     def name(self):
@@ -219,16 +232,18 @@ class TuyaDevice(Light):
         """Get state of Tuya switch."""
         status = self._device.status(self._bulb_id)
         self._state = status
-        try:
-           brightness = int(self._device.brightness())
-           if brightness > 254:
-              brightness = 255
-           if brightness < 25:
-              brightness = 25
-           self._brightness = brightness
-        except TypeError:
-            pass
-        self._color_temp = self._device.color_temp()
+        if self._sp_brightness == 'True':
+            try:
+               brightness = int(self._device.brightness())
+               if brightness > 254:
+                  brightness = 255
+               if brightness < 25:
+                  brightness = 25
+               self._brightness = brightness
+            except TypeError:
+                pass
+        if self._sp_color_temp == 'True':
+            self._color_temp = self._device.color_temp()
 
     @property
     def brightness(self):
@@ -262,16 +277,19 @@ class TuyaDevice(Light):
         """Turn on or control the light."""
         log.debug("Turning on, state: " + str(self._device.cached_status()))
         self._device.set_status(True, self._bulb_id)
-        if ATTR_BRIGHTNESS in kwargs:
-            converted_brightness = int(kwargs[ATTR_BRIGHTNESS])
-            if converted_brightness <= 25:
-                converted_brightness = 25
-            self._device.set_brightness(converted_brightness)
-        if ATTR_HS_COLOR in kwargs:
-            raise ValueError(" TODO implement RGB from HS")
-        if ATTR_COLOR_TEMP in kwargs:
-            color_temp = int(255 - (255 / (MAX_MIRED - MIN_MIRED)) * (int(kwargs[ATTR_COLOR_TEMP]) - MIN_MIRED))
-            self._device.set_color_temp(color_temp)
+
+        if self._sp_brightness == 'True':
+            if ATTR_BRIGHTNESS in kwargs:
+                converted_brightness = int(kwargs[ATTR_BRIGHTNESS])
+                if converted_brightness <= 25:
+                    converted_brightness = 25
+                self._device.set_brightness(converted_brightness)
+        # if ATTR_HS_COLOR in kwargs:
+            # raise ValueError(" TODO implement RGB from HS")
+        if self._sp_color_temp == 'True':
+            if ATTR_COLOR_TEMP in kwargs:
+                color_temp = int(255 - (255 / (MAX_MIRED - MIN_MIRED)) * (int(kwargs[ATTR_COLOR_TEMP]) - MIN_MIRED))
+                self._device.set_color_temp(color_temp)
 
     def turn_off(self, **kwargs):
         """Turn Tuya switch off."""
@@ -280,8 +298,11 @@ class TuyaDevice(Light):
     @property
     def supported_features(self):
         """Flag supported features."""
-        supports = SUPPORT_BRIGHTNESS
+        supports = 0
+        if self._sp_brightness == 'True':
+            supports = supports | SUPPORT_BRIGHTNESS
         #if self._device.support_color():
         #    supports = supports | SUPPORT_COLOR
-        supports = supports | SUPPORT_COLOR_TEMP
+        if self._sp_color_temp == 'True':
+            supports = supports | SUPPORT_COLOR_TEMP
         return supports
