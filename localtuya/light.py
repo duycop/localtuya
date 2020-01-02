@@ -45,7 +45,7 @@ CONF_LOCAL_KEY = 'local_key'
 CONF_PROTOCOL_VERSION = 'protocol_version'
 CONF_SP_BRIGHTNESS = 'sp_brightness'
 CONF_SP_COLOR_TEMP = 'sp_color_temp'
-CONF_SCAN_INTERVAL = 'scan_interval'
+CONF_INTERVAL = 'interval'
 
 
 # IMPORTANT, id is used as key for state and turning on and off, 1 was fine switched apparently but my bulbs need 20, other feature attributes count up from this, e.g. 21 mode, 22 brightnes etc, see my pytuya modification.
@@ -67,7 +67,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_ID, default=DEFAULT_ID): cv.string,
     vol.Optional(CONF_SP_BRIGHTNESS, default='False'): cv.string,
     vol.Optional(CONF_SP_COLOR_TEMP, default='False'): cv.string,
-    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_INTERVAL): cv.string
+    vol.Optional(CONF_INTERVAL, default=DEFAULT_INTERVAL): cv.string
 })
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.DEBUG)  # Debug hack!
@@ -77,7 +77,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up of the Tuya switch."""
     from . import pytuya
 
-    _interval = int(config.get(CONF_SCAN_INTERVAL))
+    _interval = int(config.get(CONF_INTERVAL))
     lights = []
     pytuyadevice = pytuya.BulbDevice(config.get(CONF_DEVICE_ID), config.get(CONF_HOST), config.get(CONF_LOCAL_KEY))
     pytuyadevice.set_version(float(config.get(CONF_PROTOCOL_VERSION)))
@@ -101,7 +101,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
            device.update()
 
     track_time_interval(hass, poll_devices_update, timedelta(seconds=_interval))
-    
+
 class TuyaCache:
     """Cache wrapper for pytuya.BulbDevice"""
 
