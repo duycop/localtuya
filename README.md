@@ -23,6 +23,7 @@ switch:
     protocol_version: 3.3
     id: 1
     scan_interval: 1 # default interval will be 5s
+    interval: 1 # should be the same with scan_interval
 
 light:
   - platform: localtuya
