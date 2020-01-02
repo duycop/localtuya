@@ -22,7 +22,7 @@ switch:
     name: tuya_01
     protocol_version: 3.3
     id: 1
-    interval: 5 # default interval will be 30s
+    scan_interval: 1 # default interval will be 5s
 
 light:
   - platform: localtuya

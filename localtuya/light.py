@@ -15,11 +15,15 @@ light:
     sp_color_temp: 'True' # Default False
 """
 import voluptuous as vol
+from datetime import timedelta
+
 from homeassistant.const import (CONF_HOST, CONF_ID, CONF_SWITCHES, CONF_FRIENDLY_NAME, CONF_ICON, CONF_NAME)
 import homeassistant.helpers.config_validation as cv
 from time import time, sleep
 from threading import Lock
 import logging
+from homeassistant.helpers.event import track_time_interval
+
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
@@ -41,11 +45,14 @@ CONF_LOCAL_KEY = 'local_key'
 CONF_PROTOCOL_VERSION = 'protocol_version'
 CONF_SP_BRIGHTNESS = 'sp_brightness'
 CONF_SP_COLOR_TEMP = 'sp_color_temp'
+CONF_SCAN_INTERVAL = 'scan_interval'
 
 
 # IMPORTANT, id is used as key for state and turning on and off, 1 was fine switched apparently but my bulbs need 20, other feature attributes count up from this, e.g. 21 mode, 22 brightnes etc, see my pytuya modification.
 DEFAULT_ID = '1'
 DEFAULT_PROTOCOL_VERSION = 3.3
+DEFAULT_INTERVAL = 5
+
 MIN_MIRED = 153
 MAX_MIRED = 370
 UPDATE_RETRY_LIMIT = 10
@@ -59,7 +66,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_PROTOCOL_VERSION, default=DEFAULT_PROTOCOL_VERSION): vol.Coerce(float),
     vol.Optional(CONF_ID, default=DEFAULT_ID): cv.string,
     vol.Optional(CONF_SP_BRIGHTNESS, default='False'): cv.string,
-    vol.Optional(CONF_SP_COLOR_TEMP, default='False'): cv.string
+    vol.Optional(CONF_SP_COLOR_TEMP, default='False'): cv.string,
+    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_INTERVAL): cv.string
 })
 log = logging.getLogger(__name__)
 log.setLevel(level=logging.DEBUG)  # Debug hack!
@@ -69,11 +77,12 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up of the Tuya switch."""
     from . import pytuya
 
+    _interval = int(config.get(CONF_SCAN_INTERVAL))
     lights = []
     pytuyadevice = pytuya.BulbDevice(config.get(CONF_DEVICE_ID), config.get(CONF_HOST), config.get(CONF_LOCAL_KEY))
     pytuyadevice.set_version(float(config.get(CONF_PROTOCOL_VERSION)))
 
-    bulb_device = TuyaCache(pytuyadevice)
+    bulb_device = TuyaCache(pytuyadevice, _interval)
     lights.append(
             TuyaDevice(
                 bulb_device,
@@ -87,14 +96,22 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
     add_devices(lights)
 
+    def poll_devices_update(event_time):
+        for device in lights:
+           device.update()
+
+    track_time_interval(hass, poll_devices_update, timedelta(seconds=_interval))
+    
 class TuyaCache:
     """Cache wrapper for pytuya.BulbDevice"""
 
-    def __init__(self, device):
+    def __init__(self, device, interval):
         """Initialize the cache."""
         self._cached_status = ''
         self._cached_status_time = 0
         self._device = device
+        self._interval = interval
+
         self._lock = Lock()
 
     def __get_status(self, switchid):
@@ -128,7 +145,7 @@ class TuyaCache:
         self._lock.acquire()
         try:
             now = time()
-            if not self._cached_status or now - self._cached_status_time > 30:
+            if not self._cached_status or now - self._cached_status_time > self._interval:
                 sleep(0.5)
                 self._cached_status = self.__get_status(switchid)
                 self._cached_status_time = time()

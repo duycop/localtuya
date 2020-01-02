@@ -10,6 +10,7 @@ switch:
     device_id: 12345678912345671234
     name: tuya_01
     protocol_version: 3.3
+    scan_interval: 1
 """
 import voluptuous as vol
 from datetime import timedelta
@@ -31,7 +32,7 @@ CONF_PROTOCOL_VERSION = 'protocol_version'
 CONF_CURRENT = 'current'
 CONF_CURRENT_CONSUMPTION = 'current_consumption'
 CONF_VOLTAGE = 'voltage'
-CONF_INTERVAL = 'interval'
+CONF_SCAN_INTERVAL = 'scan_interval'
 
 
 DEFAULT_ID = '1'
@@ -55,7 +56,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_CURRENT, default='4'): cv.string,
     vol.Optional(CONF_CURRENT_CONSUMPTION, default='5'): cv.string,
     vol.Optional(CONF_VOLTAGE, default='6'): cv.string,
-    vol.Optional(CONF_INTERVAL, default=DEFAULT_INTERVAL): cv.string,
+    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_INTERVAL): cv.string,
 })
 
 
@@ -63,7 +64,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up of the Tuya switch."""
     from . import pytuya
 
-    _interval = int(config.get(CONF_INTERVAL))
+    _interval = int(config.get(CONF_SCAN_INTERVAL))
     switches = []
     pytuyadevice = pytuya.OutletDevice(config.get(CONF_DEVICE_ID), config.get(CONF_HOST), config.get(CONF_LOCAL_KEY))
     pytuyadevice.set_version(float(config.get(CONF_PROTOCOL_VERSION)))
