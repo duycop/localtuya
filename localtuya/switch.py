@@ -12,9 +12,13 @@ switch:
     protocol_version: 3.3
 """
 import voluptuous as vol
+from datetime import timedelta
+
 from homeassistant.components.switch import SwitchDevice, PLATFORM_SCHEMA
 from homeassistant.const import (CONF_HOST, CONF_ID, CONF_SWITCHES, CONF_FRIENDLY_NAME, CONF_ICON, CONF_NAME)
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.event import track_time_interval
+
 from time import time, sleep
 from threading import Lock
 import socket
@@ -32,6 +36,7 @@ CONF_INTERVAL = 'interval'
 
 DEFAULT_ID = '1'
 DEFAULT_PROTOCOL_VERSION = 3.3
+DEFAULT_INTERVAL = 5
 
 ATTR_CURRENT = 'current'
 ATTR_CURRENT_CONSUMPTION = 'current_consumption'
@@ -50,7 +55,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_CURRENT, default='4'): cv.string,
     vol.Optional(CONF_CURRENT_CONSUMPTION, default='5'): cv.string,
     vol.Optional(CONF_VOLTAGE, default='6'): cv.string,
-    vol.Optional(CONF_INTERVAL, default='30'): cv.string,
+    vol.Optional(CONF_INTERVAL, default=DEFAULT_INTERVAL): cv.string,
 })
 
 
@@ -58,10 +63,11 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up of the Tuya switch."""
     from . import pytuya
 
+    _interval = int(config.get(CONF_INTERVAL))
     switches = []
     pytuyadevice = pytuya.OutletDevice(config.get(CONF_DEVICE_ID), config.get(CONF_HOST), config.get(CONF_LOCAL_KEY))
     pytuyadevice.set_version(float(config.get(CONF_PROTOCOL_VERSION)))
-    outlet_device = TuyaCache(pytuyadevice, config.get(CONF_INTERVAL))
+    outlet_device = TuyaCache(pytuyadevice, _interval)
 
     switches.append(
             TuyaDevice(
@@ -77,6 +83,12 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
     add_devices(switches)
 
+    def poll_devices_update(event_time):
+        for device in switches:
+           device.update()
+
+    track_time_interval(hass, poll_devices_update, timedelta(seconds=_interval))
+
 class TuyaCache:
     """Cache wrapper for pytuya.OutletDevice"""
 
@@ -86,7 +98,7 @@ class TuyaCache:
         self._cached_status_time = 0
         self._cached_available = False
         self._device = device
-        self._interval = int(interval)
+        self._interval = interval
         self._lock = Lock()
 
     def __get_status(self):
